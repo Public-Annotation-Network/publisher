@@ -1,0 +1,10 @@
+.idea
+.venv
+.DS_Store
+.envrc
+.python-version
+.python-virtualenv
+
+__pycache__/
+*.py[cod]
+venv/
