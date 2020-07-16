@@ -60,12 +60,14 @@ class UserResource:
             except NoResultFound:
                 raise falcon.HTTP_NOT_FOUND
         else:
-            user_dbs = session.query(User).all()
+            limit = req.context["pagination"]["limit"]
+            offset = req.context["pagination"]["offset"]
+            user_dbs = session.query(User).offset(offset).limit(limit).all()
             if user_dbs:
                 obj = [user.to_dict() for user in user_dbs]
                 res.body = json.dumps(obj)
             else:
-                raise falcon.HTTP_NO_CONTENT()
+                res.status = falcon.HTTP_NO_CONTENT
 
     def on_put(self, req, res):
         # reset password
