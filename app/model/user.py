@@ -27,7 +27,7 @@ class User(Base):
         collision = False
         for user in session.query(User).all():
             if user.token is not None and compare_digest(
-                user.token.encode("utf-8"), token
+                user.token.encode("utf-8"), token.encode("utf-8")
             ):
                 if result is not None:
                     collision = True

@@ -27,10 +27,6 @@ class Annotation(Base):
     def get_annotation_id(self):
         return f"urn:uuid:{self.annotation_id}"
 
-    @staticmethod
-    def get_credential_type():
-        return
-
     def get_issuer(self):
         return f"urn:ethereum:{self.issuer}"
 

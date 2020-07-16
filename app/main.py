@@ -7,6 +7,7 @@ from app.config import SECRET_KEY, TOKEN_CHARSET, TOKEN_LENGTH
 from app.database import db_session, init_session
 from app.middleware import DatabaseSessionManager, RequireJSON, TokenAuthMiddleware
 from app.utils.auth import AuthManager
+from app.utils.pagination import PaginationMiddleware
 
 
 class PublisherAPI(falcon.API):
@@ -21,7 +22,7 @@ class PublisherAPI(falcon.API):
         )
 
         # user management
-        self.add_route("/users", UserResource(auth_manager))
+        self.add_route("/users/", UserResource(auth_manager))
         self.add_route("/users/{user_id}", UserResource(auth_manager))
 
         # auth
@@ -29,6 +30,7 @@ class PublisherAPI(falcon.API):
         self.add_route("/logout", LogoutResource(auth_manager))
 
         # annotations
+        self.add_route("/annotations/", AnnotationResource())
         self.add_route("/annotations/{annotation_id}", AnnotationResource())
 
 
@@ -39,6 +41,7 @@ middleware = [
     public_cors.middleware,
     TokenAuthMiddleware(db_session),
     DatabaseSessionManager(db_session),
+    PaginationMiddleware(),
 ]
 application = PublisherAPI(middleware=middleware)
 
