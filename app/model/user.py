@@ -1,13 +1,17 @@
 from secrets import compare_digest
+from uuid import uuid4
 
 from sqlalchemy import Column, Integer, String
+from sqlalchemy.dialects.postgresql import UUID
 
 from app.config import TOKEN_LENGTH
 from app.model import Base
 
 
 class User(Base):
-    user_id = Column(Integer, primary_key=True)
+    id = Column(
+        UUID(as_uuid=True), primary_key=True, default=uuid4, unique=True, nullable=False
+    )
     username = Column(String(20), nullable=False, unique=True)
     password = Column(String(80), nullable=False)
     token = Column(String(255), nullable=True)
@@ -19,7 +23,7 @@ class User(Base):
 
     @classmethod
     def get_id(cls):
-        return User.user_id
+        return User.id
 
     @classmethod
     def find_by_token(cls, session, token):
