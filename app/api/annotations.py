@@ -170,53 +170,8 @@ class AnnotationResource:
         # publish annotation on IPFS and add subject ID
         # TODO: return IPFS cid in response
 
-        # annotation.subject_id = "Look mom, I'm on IPFS!"
+        annotation.subject_id = "Look mom, I'm on IPFS!"
         session.add(annotation)
-
-        # add annotation to batch
-
-        # init publish workflow if batch full
-
-        # publish workflow:
-        # send transaction to registry contract
-
-
-
-        # # get signature from annotation request
-        # try:
-        #     raw_signature = remove_0x_prefix(req.media["proof"]["jws"])
-        #     sig_r = int(raw_signature[0:64], 16)
-        #     sig_s = int(raw_signature[64:128], 16)
-        #     sig_v = 27
-        #     signature = keys.Signature(vrs=(sig_v, sig_r, sig_s))
-        # except Exception as e:
-        #     logger.debug(f"Signature reconstruction failed: {e}")
-        #     res.status = falcon.HTTP_BAD_REQUEST
-        #     return
-        #
-        # # get public key from annotation request
-        # try:
-        #     raw_pubkey = remove_0x_prefix(
-        #         req.media["proof"]["verificationMethod"].split(":")[2]
-        #     )
-        #     pubkey = keys.PublicKey(bytes.fromhex(raw_pubkey))
-        # except Exception as e:
-        #     logger.debug(f"Public key reconstruction failed: {e}")
-        #     res.status = falcon.HTTP_BAD_REQUEST
-        #     return
-        #
-        # # verify the signature
-        # valid = signature.verify_msg(message=message.encode("utf-8"), public_key=pubkey)
-        # if not valid:
-        #     logger.debug("Found invalid signature, aborting.")
-        #     res.status = falcon.HTTP_BAD_REQUEST
-        #     return
-        #
-        # logger.debug(f"Issuer pubkey: {pubkey} is valid: {valid}")
-
-
-        # annotation.subject_id = "Look mom, I'm on IPFS!"
-        # session.add(annotation)
 
         # add annotation to batch
 
