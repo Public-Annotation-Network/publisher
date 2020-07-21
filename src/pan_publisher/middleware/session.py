@@ -3,7 +3,7 @@ import sqlalchemy.orm.scoping as scoping
 from loguru import logger
 from sqlalchemy.exc import SQLAlchemyError
 
-from app import config
+from pan_publisher import config
 
 
 class DatabaseSessionManager:

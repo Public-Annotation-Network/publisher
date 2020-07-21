@@ -4,7 +4,7 @@ import dateutil.parser
 from sqlalchemy import Boolean, Column, DateTime, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 
-from app.model import Base
+from pan_publisher.model import Base
 
 
 class Annotation(Base):

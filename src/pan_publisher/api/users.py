@@ -5,9 +5,8 @@ from cerberus import Validator
 from falcon_cors import CORS
 from loguru import logger
 from sqlalchemy.orm.exc import NoResultFound
-
-from app.model import User
-from app.utils.auth import AuthManager
+from pan_publisher.model import User
+from pan_publisher.utils.auth import AuthManager
 
 FIELDS = {
     "username": {"type": "string", "required": True, "minlength": 4, "maxlength": 20},

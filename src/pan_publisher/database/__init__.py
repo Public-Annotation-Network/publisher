@@ -2,7 +2,7 @@ from loguru import logger
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 
-from app import config
+from pan_publisher import config
 
 
 def get_engine(uri):
@@ -25,6 +25,6 @@ engine = get_engine(config.DATABASE_URL)
 def init_session():
     db_session.configure(bind=engine)
 
-    from app.model import Base
+    from pan_publisher.model import Base
 
     Base.metadata.create_all(engine)

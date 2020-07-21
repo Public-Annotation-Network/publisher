@@ -1,0 +1,72 @@
+version: '3.7'
+
+x-common-variables: &common-variables
+  SERVICE_NAME: "PAN Publisher API"
+  SECRET_KEY: "changeme!!!1"
+  TOKEN_LENGTH: 16
+  TOKEN_CHARSET: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+  ENVIRONMENT: "local"
+  POSTGRES_USER: "publisher"
+  POSTGRES_DB: "publisher"
+  POSTGRES_PASSWORD: "NWFjYmNkMGQtMzE5ZS00ZGFkLTk5MzQtY2YyNWViMzhkMzhlCg=="
+  POSTGRES_HOST: "postgres"
+  DB_ECHO: "false"
+  LOG_LEVEL: "debug"
+
+services:
+  postgres:
+    image: postgres
+    environment: *common-variables
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - 5432
+
+  redis:
+    image: redis:5-alpine
+    volumes:
+      - redis-data:/data
+    ports:
+      - 6379
+
+  web:
+    image: web
+    container_name: web
+    build:
+      context: src/
+    ports:
+      - 8000:8000
+    command: gunicorn -b 0.0.0.0:8000 pan_publisher.main:application
+    environment: *common-variables
+    depends_on:
+      - redis
+      - postgres
+
+  celery:
+    image: web
+    command: celery -A pan_publisher.api.background worker --loglevel=info
+    environment:
+      <<: *common-variables
+      CELERY_BROKER: "redis://redis:6379/0"
+      CELERY_BACKEND: "redis://redis:6379/0"
+    depends_on:
+      - web
+      - redis
+
+  monitor:
+    image: web
+    ports:
+      - 5555:5555
+    environment:
+      <<: *common-variables
+      FLOWER_BASIC_AUTH: "monitor:NWQ2M2MzODYtOThlZC00ZTU4LTkyMDktOTU1M2FhOWM0YjRjCg=="
+    command:  flower -A pan_publisher.api.background --port=5555 --broker=redis://redis:6379/0
+    depends_on:
+      - web
+      - redis
+
+volumes:
+  db-data:
+    driver: local
+  redis-data:
+    driver: local

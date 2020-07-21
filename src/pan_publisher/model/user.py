@@ -1,11 +1,11 @@
 from secrets import compare_digest
 from uuid import uuid4
 
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, String
 from sqlalchemy.dialects.postgresql import UUID
 
-from app.config import TOKEN_LENGTH
-from app.model import Base
+from pan_publisher.config import TOKEN_LENGTH
+from pan_publisher.model import Base
 
 
 class User(Base):

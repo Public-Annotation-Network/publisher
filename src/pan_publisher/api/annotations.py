@@ -5,14 +5,15 @@ import falcon
 import requests
 from eth_account import Account
 from eth_account.messages import encode_defunct
-from eth_keys import keys
 from eth_utils import remove_0x_prefix
 from falcon.media.validators import jsonschema
 from falcon_cors import CORS
 from gql import AIOHTTPTransport, Client, gql
 from loguru import logger
 
-from app.model.annotation import Annotation
+from pan_publisher.api.background import batch_publish
+from pan_publisher.model.annotation import Annotation
+
 
 ANNOTATION_SCHEMA = {
     "$schema": "http://json-schema.org/draft-04/schema#",
@@ -159,7 +160,9 @@ class AnnotationResource:
         )
 
         if request_issuer.lower() != signature_issuer.lower():
-            logger.debug(f"Bad signature issuer: {request_issuer} != {signature_issuer}")
+            logger.debug(
+                f"Bad signature issuer: {request_issuer} != {signature_issuer}"
+            )
             res.status = falcon.HTTP_BAD_REQUEST
             return
 
@@ -173,9 +176,6 @@ class AnnotationResource:
         annotation.subject_id = "Look mom, I'm on IPFS!"
         session.add(annotation)
 
-        # add annotation to batch
-
         # init publish workflow if batch full
-
-        # publish workflow:
-        # send transaction to registry contract
+        batch_publish.delay()
+        # add annotation to batch

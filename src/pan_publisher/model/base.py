@@ -1,7 +1,7 @@
 from sqlalchemy import Column, DateTime, PrimaryKeyConstraint, Table, func
 from sqlalchemy.ext.declarative import as_declarative, declarative_base, declared_attr
 
-from app.utils import alchemy
+from pan_publisher.utils import alchemy
 
 
 @as_declarative()

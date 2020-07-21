@@ -4,7 +4,8 @@
 .envrc
 .python-version
 .python-virtualenv
-
 __pycache__/
 *.py[cod]
 venv/
+*.egg-info/
+submit.py

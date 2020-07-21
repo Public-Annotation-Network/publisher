@@ -3,9 +3,9 @@ from secrets import compare_digest
 import falcon
 from falcon_auth import FalconAuthMiddleware, TokenAuthBackend
 
-from app.config import SECRET_KEY, TOKEN_CHARSET, TOKEN_LENGTH
-from app.model import User
-from app.utils.auth import AuthManager
+from pan_publisher.config import SECRET_KEY, TOKEN_CHARSET, TOKEN_LENGTH
+from pan_publisher.model import User
+from pan_publisher.utils.auth import AuthManager
 
 
 class TokenAuthMiddleware(FalconAuthMiddleware):
