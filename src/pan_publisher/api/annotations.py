@@ -180,7 +180,7 @@ class AnnotationResource:
         session.add(annotation)
 
         # publish annotation on IPFS and add subject ID
-        # TODO: Pin on TheGraph as well
+        # TODO: Pin on TheGraph
         logger.debug("Adding and pinning annotation to IPFS")
         response = requests.post(
             PINATA_ENDPOINT,

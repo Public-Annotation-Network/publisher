@@ -39,9 +39,10 @@ DATABASE_URL = "postgresql+psycopg2://{user}:{password}@{host}/{database}".forma
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "info")
 PINATA_API_KEY = os.environ.get("PINATA_API_KEY")
 PINATA_SECRET_API_KEY = os.environ.get("PINATA_SECRET_API_KEY")
-if not all((PINATA_API_KEY, PINATA_SECRET_API_KEY)):
+PINATA_ENDPOINT = os.environ.get("PINATA_ENDPOINT")
+if not all((PINATA_API_KEY, PINATA_SECRET_API_KEY, PINATA_ENDPOINT)):
     raise ConfigurationError(
-        "Pinata API keys are needed to add and pin annotations on IPFS"
+        "Pinata API keys and an endpoint are needed to add and pin annotations on IPFS"
     )
 
 PUBLISHER_PRIVKEY = os.environ.get("PUBLISHER_PRIVATE_KEY")
@@ -50,3 +51,31 @@ if not PUBLISHER_PRIVKEY:
 PUBLISHER_ACCOUNT = Account.from_key(PUBLISHER_PRIVKEY)
 PUBLISHER_PUBKEY = PUBLISHER_ACCOUNT.address
 BATCH_SIZE = 2
+REGISTRY_CONTRACT = os.environ.get("REGISTRY_CONTRACT")
+if REGISTRY_CONTRACT is None:
+    raise ConfigurationError("Please provide a registry contract address")
+INFURA_URL = os.environ.get("INFURA_URL")
+if INFURA_URL is None:
+    raise ConfigurationError("Please provide an Infura endpoint URL")
+
+CELERY_BROKER = os.environ.get("CELERY_BROKER")
+CELERY_BACKEND = os.environ.get("CELERY_BACKEND")
+
+if CELERY_BACKEND is None or CELERY_BROKER is None:
+    raise ConfigurationError("Missing celery config parameters")
+
+THEGRAPH_IPFS_ENDPOINT = os.environ.get("THEGRAPH_IPFS_ENDPOINT")
+if THEGRAPH_IPFS_ENDPOINT is None:
+    raise ConfigurationError(
+        "Please provide a valid TheGraph endpoint for IPFS publishing and pinning"
+    )
+
+REGISTRY_ABI = [
+    {
+        "inputs": [{"internalType": "string", "name": "cid", "type": "string"}],
+        "name": "storeCID",
+        "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+        "stateMutability": "nonpayable",
+        "type": "function",
+    }
+]

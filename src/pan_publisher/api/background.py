@@ -5,6 +5,7 @@ from uuid import uuid4
 
 import celery
 import requests
+import web3
 from eth_account.account import SignedMessage
 from eth_account.messages import encode_defunct
 from loguru import logger
@@ -13,20 +14,21 @@ from sqlalchemy.orm import Query, Session, sessionmaker
 
 from pan_publisher.config import (
     BATCH_SIZE,
+    CELERY_BACKEND,
+    CELERY_BROKER,
+    INFURA_URL,
     PINATA_API_KEY,
+    PINATA_ENDPOINT,
     PINATA_SECRET_API_KEY,
     PUBLISHER_ACCOUNT,
     PUBLISHER_PUBKEY,
+    REGISTRY_ABI,
+    REGISTRY_CONTRACT,
     SERVICE_NAME,
+    THEGRAPH_IPFS_ENDPOINT,
 )
 from pan_publisher.database import engine
 from pan_publisher.model.annotation import Annotation
-
-# TODO: Move to config
-CELERY_BROKER = os.environ.get("CELERY_BROKER")
-CELERY_BACKEND = os.environ.get("CELERY_BACKEND")
-TG_ENDPOINT = "https://api.thegraph.com/ipfs/api/v0/add"
-PINATA_ENDPOINT = "https://api.pinata.cloud/pinning/pinJSONToIPFS"
 
 app = celery.Celery("tasks", broker=CELERY_BROKER, backend=CELERY_BACKEND)
 
@@ -72,6 +74,7 @@ def batch_publish():
     batch["proof"]["jws"] = sig.signature.hex()
 
     # publish and pin batch claim on IPFS (TheGraph and Pinata)
+    # TODO: Pin on TheGraph
     logger.debug("Adding and pinning annotation to IPFS")
     response = requests.post(
         PINATA_ENDPOINT,
@@ -108,10 +111,28 @@ def batch_publish():
         logger.debug(f"Marking annotation {annotation.id} as published")
         annotation.published = True
 
-    # TODO: create tx with batch cid to smart contract registry
-    # TODO: publish transaction through Infura to the registry contract
+    logger.debug("Starting registry batch transaction")
+    w3 = web3.Web3(web3.HTTPProvider(INFURA_URL))
+    registry = w3.eth.contract(REGISTRY_CONTRACT, abi=REGISTRY_ABI)
+    logger.debug("Build raw registry transaction")
+    tx = registry.functions.storeCID(batch_cid).buildTransaction(
+        {
+            "nonce": w3.eth.getTransactionCount(PUBLISHER_ACCOUNT.address),
+            "chainId": 3,  # 1 = mainnet, 3 = ropsten
+            "gas": 25_000,
+            "gasPrice": w3.toWei("10", "gwei"),
+        }
+    )
+    logger.debug("Signing raw transaction with publisher key")
+    signed_tx = w3.eth.account.signTransaction(
+        tx, private_key=PUBLISHER_ACCOUNT.privateKey
+    )
+    logger.debug("Sending raw transaction")
+    tx_hash = w3.eth.sendRawTransaction(signed_tx.rawTransaction)
+    logger.info(f"Published batch to registry in transaction {tx_hash.hex()}")
 
     # store in DB
+    logger.debug("Committing batch state changes")
     try:
         session.commit()
     except SQLAlchemyError as e:

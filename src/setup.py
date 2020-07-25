@@ -2,7 +2,7 @@
 
 """The setup script."""
 
-from setuptools import setup
+from setuptools import find_packages, setup
 
 with open("requirements.txt", "r") as f:
     requirements = [x for x in map(str.strip, f.read().split("\n")) if x != ""]
@@ -23,7 +23,7 @@ setup(
     install_requires=requirements,
     include_package_data=True,
     name="pan_publisher",
-    packages=["pan_publisher"],
+    packages=find_packages(),
     url="https://github.com/Public-Annotation-Network/publisher",
     version="0.1.0",
     zip_safe=False,

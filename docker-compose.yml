@@ -6,15 +6,11 @@ services:
     env_file: .env
     volumes:
       - db-data:/var/lib/postgresql/data
-#    ports:
-#      - 5432
 
   redis:
     image: redis:5-alpine
     volumes:
       - redis-data:/data
-#    ports:
-#      - 6379
 
   web:
     image: web
