@@ -5,6 +5,7 @@ from cerberus import Validator
 from falcon_cors import CORS
 from loguru import logger
 from sqlalchemy.orm.exc import NoResultFound
+
 from pan_publisher.model import User
 from pan_publisher.utils.auth import AuthManager
 

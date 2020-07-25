@@ -1,5 +1,6 @@
 import json
 from copy import deepcopy
+from datetime import datetime
 
 import falcon
 import requests
@@ -10,12 +11,18 @@ from falcon.media.validators import jsonschema
 from falcon_cors import CORS
 from gql import AIOHTTPTransport, Client, gql
 from loguru import logger
-from datetime import datetime
-from pan_publisher.config import PINATA_SECRET_API_KEY, PINATA_API_KEY, SERVICE_NAME, PUBLISHER_PUBKEY
+from sqlalchemy.orm import Session
+
 from pan_publisher.api.background import batch_publish
+from pan_publisher.config import (
+    PINATA_API_KEY,
+    PINATA_SECRET_API_KEY,
+    PUBLISHER_PUBKEY,
+    SERVICE_NAME,
+)
 from pan_publisher.model.annotation import Annotation
 
-
+# TODO: Move to config
 ANNOTATION_SCHEMA = {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "type": "object",
@@ -169,24 +176,29 @@ class AnnotationResource:
 
         # create annotation DB object
         annotation = Annotation.from_dict(req.media)
-        session = req.context["session"]
+        session: Session = req.context["session"]
+        session.add(annotation)
 
         # publish annotation on IPFS and add subject ID
+        # TODO: Pin on TheGraph as well
         logger.debug("Adding and pinning annotation to IPFS")
         response = requests.post(
             PINATA_ENDPOINT,
-            headers={"pinata_api_key": PINATA_API_KEY, "pinata_secret_api_key": PINATA_SECRET_API_KEY},
+            headers={
+                "pinata_api_key": PINATA_API_KEY,
+                "pinata_secret_api_key": PINATA_SECRET_API_KEY,
+            },
             json={
                 "pinataMetadata": {
-                    "name": f"annotation-{annotation.id}",
+                    "name": f"annotation-{annotation.issuer}",
                     "pan": {
                         "service": SERVICE_NAME,
                         "pubkey": PUBLISHER_PUBKEY,
-                        "timestamp": datetime.now().isoformat()
-                    }
+                        "timestamp": datetime.now().isoformat(),
+                    },
                 },
-                "pinataContent": req.media
-            }
+                "pinataContent": req.media,
+            },
         )
         if response.status_code != 200:
             logger.error(f"Publishing to Pinata failed with response '{response.text}'")
@@ -199,8 +211,6 @@ class AnnotationResource:
             logger.error(f"Pinata returned an invalid JSON response: '{response.text}'")
             res.status = falcon.HTTP_FAILED_DEPENDENCY
             return
-
-        # TODO: return IPFS cid in response
 
         annotation.subject_id = pinata_json["IpfsHash"]
         session.add(annotation)

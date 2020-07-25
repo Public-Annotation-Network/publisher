@@ -15,13 +15,14 @@ class Annotation(Base):
     )
 
     # issuer data
-    issuer = Column(String(42), nullable=False)  # TODO: add issuer address validator
+    issuer = Column(String(42), nullable=False)
     issuance_date = Column(DateTime(), nullable=False)
 
     # annotation data
-    subject_id = Column(String(50), nullable=False)  # TODO: fill out when pinned
+    subject_id = Column(String(50), nullable=False)
     original_content = Column(Text(), nullable=False)
     annotation_content = Column(Text(), nullable=True)
+    batch_id = Column(UUID(as_uuid=True), default=None, nullable=True)
 
     # proof data
     proof_type = "EthereumECDSA"

@@ -2,30 +2,10 @@
 
 """The setup script."""
 
-from setuptools import find_packages, setup
+from setuptools import setup
 
-requirements = [
-    "falcon",
-    "falcon_cors",
-    "gunicorn",
-    "psycopg2-binary>=2.8",
-    "SQLAlchemy",
-    "bcrypt",
-    "shortuuid",
-    "cryptography",
-    "cerberus",
-    "loguru~=0.5.1",
-    "celery",
-    "flower",
-    "eth-account",
-    "gql==3.0.0a1",
-    "jsonschema",
-    "requests",
-    "python-dateutil",
-    "redis",
-    "falcon_auth",
-]
-
+with open("requirements.txt", "r") as f:
+    requirements = [x for x in map(str.strip, f.read().split("\n")) if x != ""]
 
 setup(
     author="Dominik Muhs",

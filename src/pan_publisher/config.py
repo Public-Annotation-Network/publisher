@@ -1,5 +1,7 @@
 import os
 
+from eth_account import Account
+
 
 class ConfigurationError(Exception):
     pass
@@ -23,25 +25,28 @@ DB_HOST = os.environ.get("POSTGRES_HOST")
 DB_NAME = os.environ.get("POSTGRES_DB")
 
 if any(map(lambda x: x is None, (DB_USER, DB_PASSWORD, DB_HOST, DB_NAME))):
-    raise ConfigurationError("Please specify all required database environment variables")
+    raise ConfigurationError(
+        "Please specify all required database environment variables"
+    )
 
 DB_ECHO = True if os.environ.get("DB_ECHO") == "true" else False
 DB_AUTOCOMMIT = True
 
 DATABASE_URL = "postgresql+psycopg2://{user}:{password}@{host}/{database}".format(
-    user=DB_USER,
-    password=DB_PASSWORD,
-    host=DB_HOST,
-    database=DB_NAME,
+    user=DB_USER, password=DB_PASSWORD, host=DB_HOST, database=DB_NAME,
 )
 
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "info")
 PINATA_API_KEY = os.environ.get("PINATA_API_KEY")
 PINATA_SECRET_API_KEY = os.environ.get("PINATA_SECRET_API_KEY")
 if not all((PINATA_API_KEY, PINATA_SECRET_API_KEY)):
-    raise ConfigurationError("Pinata API keys are needed to add and pin annotations on IPFS")
+    raise ConfigurationError(
+        "Pinata API keys are needed to add and pin annotations on IPFS"
+    )
 
 PUBLISHER_PRIVKEY = os.environ.get("PUBLISHER_PRIVATE_KEY")
-PUBLISHER_PUBKEY = os.environ.get("PUBLISHER_PUBLIC_KEY")
-if not all((PUBLISHER_PRIVKEY, PUBLISHER_PUBKEY)):
-    raise ConfigurationError("Publisher private and public key are needed")
+if not PUBLISHER_PRIVKEY:
+    raise ConfigurationError("A valid publisher private key is required")
+PUBLISHER_ACCOUNT = Account.from_key(PUBLISHER_PRIVKEY)
+PUBLISHER_PUBKEY = PUBLISHER_ACCOUNT.address
+BATCH_SIZE = 2

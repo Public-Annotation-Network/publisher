@@ -2,9 +2,9 @@ import falcon
 from falcon_cors import CORS
 from loguru import logger
 
-from pan_publisher.api import AnnotationResource, LogoutResource, UserResource
+from pan_publisher.api import AnnotationResource
 from pan_publisher.database import db_session, init_session
-from pan_publisher.middleware import DatabaseSessionManager, RequireJSON, TokenAuthMiddleware
+from pan_publisher.middleware import DatabaseSessionManager, RequireJSON
 from pan_publisher.utils.pagination import PaginationMiddleware
 
 
