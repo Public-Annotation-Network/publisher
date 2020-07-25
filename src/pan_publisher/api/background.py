@@ -1,5 +1,5 @@
 import os
-
+from loguru import logger
 import celery
 
 CELERY_BROKER = os.environ.get("CELERY_BROKER")
@@ -16,4 +16,4 @@ def batch_publish():
     # generate new batch ID and add to each annotation
     # store in DB
     # add batch with cid to registry contract
-    pass
+    logger.info("Batch processing go brrrrr")

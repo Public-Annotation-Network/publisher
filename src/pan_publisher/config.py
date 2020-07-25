@@ -16,7 +16,6 @@ except ValueError:
     raise ConfigurationError("TOKEN_LENGTH must be a valid integer")
 
 TOKEN_CHARSET = os.environ.get("TOKEN_CHARSET", "".join(map(chr, range(48, 58))))
-ENVIRONMENT = os.environ.get("ENVIRONMENT", "production")  # {production,local}
 
 DB_USER = os.environ.get("POSTGRES_USER")
 DB_PASSWORD = os.environ.get("POSTGRES_PASSWORD")
@@ -37,3 +36,12 @@ DATABASE_URL = "postgresql+psycopg2://{user}:{password}@{host}/{database}".forma
 )
 
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "info")
+PINATA_API_KEY = os.environ.get("PINATA_API_KEY")
+PINATA_SECRET_API_KEY = os.environ.get("PINATA_SECRET_API_KEY")
+if not all((PINATA_API_KEY, PINATA_SECRET_API_KEY)):
+    raise ConfigurationError("Pinata API keys are needed to add and pin annotations on IPFS")
+
+PUBLISHER_PRIVKEY = os.environ.get("PUBLISHER_PRIVATE_KEY")
+PUBLISHER_PUBKEY = os.environ.get("PUBLISHER_PUBLIC_KEY")
+if not all((PUBLISHER_PRIVKEY, PUBLISHER_PUBKEY)):
+    raise ConfigurationError("Publisher private and public key are needed")

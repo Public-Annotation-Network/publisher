@@ -10,7 +10,8 @@ from falcon.media.validators import jsonschema
 from falcon_cors import CORS
 from gql import AIOHTTPTransport, Client, gql
 from loguru import logger
-
+from datetime import datetime
+from pan_publisher.config import PINATA_SECRET_API_KEY, PINATA_API_KEY, SERVICE_NAME, PUBLISHER_PUBKEY
 from pan_publisher.api.background import batch_publish
 from pan_publisher.model.annotation import Annotation
 
@@ -59,7 +60,7 @@ ANNOTATION_SCHEMA = {
     ],
 }
 
-
+PINATA_ENDPOINT = "https://api.pinata.cloud/pinning/pinJSONToIPFS"
 PAN_SUBGRAPH = (
     "https://api.thegraph.com/subgraphs/name/public-annotation-network/subgraph"
 )
@@ -171,11 +172,41 @@ class AnnotationResource:
         session = req.context["session"]
 
         # publish annotation on IPFS and add subject ID
+        logger.debug("Adding and pinning annotation to IPFS")
+        response = requests.post(
+            PINATA_ENDPOINT,
+            headers={"pinata_api_key": PINATA_API_KEY, "pinata_secret_api_key": PINATA_SECRET_API_KEY},
+            json={
+                "pinataMetadata": {
+                    "name": f"annotation-{annotation.id}",
+                    "pan": {
+                        "service": SERVICE_NAME,
+                        "pubkey": PUBLISHER_PUBKEY,
+                        "timestamp": datetime.now().isoformat()
+                    }
+                },
+                "pinataContent": req.media
+            }
+        )
+        if response.status_code != 200:
+            logger.error(f"Publishing to Pinata failed with response '{response.text}'")
+            res.status = falcon.HTTP_FAILED_DEPENDENCY
+            return
+
+        try:
+            pinata_json = response.json()
+        except json.JSONDecodeError:
+            logger.error(f"Pinata returned an invalid JSON response: '{response.text}'")
+            res.status = falcon.HTTP_FAILED_DEPENDENCY
+            return
+
         # TODO: return IPFS cid in response
 
-        annotation.subject_id = "Look mom, I'm on IPFS!"
+        annotation.subject_id = pinata_json["IpfsHash"]
         session.add(annotation)
 
-        # init publish workflow if batch full
+        res.body = json.dumps(pinata_json)
+
+        # check whether we should publish a new batch
+        logger.debug("Running batch check background job")
         batch_publish.delay()
-        # add annotation to batch
