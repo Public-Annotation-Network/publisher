@@ -1,0 +1,137 @@
+swagger: "2.0"
+
+info:
+  version: "0.1.0"
+  title: "PAN Publisher API"
+
+schemes:
+- "http"
+
+paths:
+  /annotations:
+    get:
+      tags:
+      - "annotation"
+      summary: "List publisher annotations"
+      description: "Returns a singlelist of annotations"
+      operationId: "getAnnotationList"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "published"
+        in: "query"
+        description: "ID of the annotation to return"
+        default: true
+        type: "boolean"
+      - name: "offset"
+        in: "query"
+        description: "The number of entries to skip"
+        default: 0
+        type: "integer"
+      - name: "limit"
+        in: "query"
+        description: "The number of entries to return"
+        default: 10
+        type: "integer"
+      responses:
+        200:
+          description: "Success"
+        404:
+          description: "No annotations found"
+    post:
+      tags:
+      - "annotation"
+      summary: "Submit a new annotation"
+      description: "Submit a new annotation to be published on IPFS and Ethereum"
+      operationId: "addAnnotation"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "The new annotation to submit"
+        required: true
+        schema:
+          type: "object"
+          properties:
+            "@context":
+              type: "array"
+              items:
+                type: "string"
+                example: "https://pan.network/annotation/v1"
+            id:
+              type: "string"
+              example: "urn:uuid:98144d5c-c701-4835-9ae1-de77de461340"
+            type:
+              type: "array"
+              items:
+                type: "string"
+                example:
+                  - "PANCredential"
+                  - "VerifiableCredential"
+            issuer:
+              type: "string"
+              example: "urn:ethereum:0xFaD171440168363977fcAdC2d2E96EF3cd890157"
+            issuanceDate:
+              type: "string"
+              example: "2017-06-18T21:19:10Z"
+            credentialSubject:
+              type: "object"
+              properties:
+                id:
+                  type: "string"
+                  example: "urn:cid:QmZsWgikVgY3MbmgDraftxha2opsg4KSYCBeA6aGHMGZMS"
+                content:
+                  type: "string"
+                  example: "uri:tweet:joaosantos/1281904943700619265"
+                annotation:
+                  type: "string"
+                  example: "Cool tweet!"
+            proof:
+              type: "object"
+              properties:
+                type:
+                  type: "string"
+                  example: "EthereumECDSA"
+                created:
+                  type: "string"
+                  example: "2017-06-18T21:19:10Z"
+                proofPurpose:
+                  type: "string"
+                  example: "PANSubmission"
+                verificationMethod:
+                  type: "string"
+                  example: "urn:ethereum:messageHash"
+                jws:
+                  type: "string"
+                  example: "0xcf1fcd3e3ec96e96a1f467a41d1bba2ba406569c1bffbdd172d0c7a4b37378176be6474a24e3962bbb1fb6023260af0fbd5aaace50c4983689f422df39eaff841b"
+      responses:
+        200:
+          description: "Annotation submittion successful"
+        400:
+          description: "Invalid input or bad JWS"
+        424:
+          description: "Publishing to IPFS (Pinata/TheGraph) has failed"
+
+  /annotations/{annotationId}:
+    get:
+      tags:
+      - "annotation"
+      summary: "Find an annotation by ID"
+      description: "Returns a single annotation"
+      operationId: "getAnnotationById"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "annotationId"
+        in: "path"
+        description: "ID of the annotation to return"
+        required: true
+        type: "string"
+      responses:
+        200:
+          description: "Success"
+        404:
+          description: "Annotation not found"

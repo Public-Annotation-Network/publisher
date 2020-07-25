@@ -118,7 +118,7 @@ class AnnotationResource:
                 # TODO: handle transport errors
                 tg_resp = self.client.execute(
                     ANNOTATION_LIST_QUERY,
-                    variable_values={"first": limit, "skip": offset,},
+                    variable_values={"first": limit, "skip": offset},
                 )
             else:
                 # filter query
