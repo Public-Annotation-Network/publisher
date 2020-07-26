@@ -76,15 +76,15 @@ class Annotation(Base):
     @classmethod
     def from_dict(cls, candidate):
         return cls(
-            # context=candidate["@context"],
-            # credential_type=candidate["type"],
+            context=candidate["@context"],
+            credential_type=candidate["type"],
             issuer=candidate["issuer"].split(":")[2],
             issuance_date=dateutil.parser.parse(candidate["issuanceDate"]),
             original_content=candidate["credentialSubject"]["content"],
             annotation_content=candidate["credentialSubject"]["annotation"],
-            # proof_type=candidate["proof"]["type"],
+            proof_type=candidate["proof"]["type"],
             proof_date=dateutil.parser.parse(candidate["proof"]["created"]),
-            # proof_purpose=candidate["proof"]["proofPurpose"],
+            proof_purpose=candidate["proof"]["proofPurpose"],
             verification_method=candidate["proof"]["verificationMethod"],
             proof_jws=candidate["proof"]["jws"],
         )

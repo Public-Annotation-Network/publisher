@@ -3,15 +3,21 @@ from falcon_cors import CORS
 from loguru import logger
 
 from pan_publisher.api import AnnotationResource
-from pan_publisher.database import db_session, init_session
 from pan_publisher.middleware import DatabaseSessionManager, RequireJSON
+from pan_publisher.repository.annotations import AnnotationsRepository
+from pan_publisher.repository.database import db_session, init_session
 from pan_publisher.utils.pagination import PaginationMiddleware
+
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 
 class PublisherAPI(falcon.API):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         logger.info("API Server is starting")
+
+        annotations_repository = AnnotationsRepository(db_session)
 
         # auth_manager = AuthManager(
         #     secret_key=SECRET_KEY,
@@ -28,8 +34,10 @@ class PublisherAPI(falcon.API):
         # self.add_route("/logout", LogoutResource(auth_manager))
 
         # annotations
-        self.add_route("/annotations/", AnnotationResource())
-        self.add_route("/annotations/{annotation_id}", AnnotationResource())
+        self.add_route("/annotations/", AnnotationResource(annotations_repository))
+        self.add_route(
+            "/annotations/{annotation_id}", AnnotationResource(annotations_repository)
+        )
 
 
 init_session()

@@ -1,5 +1,4 @@
 import json
-import os
 from datetime import datetime
 from uuid import uuid4
 
@@ -24,11 +23,10 @@ from pan_publisher.config import (
     PUBLISHER_PUBKEY,
     REGISTRY_ABI,
     REGISTRY_CONTRACT,
-    SERVICE_NAME,
     THEGRAPH_IPFS_ENDPOINT,
 )
-from pan_publisher.database import engine
 from pan_publisher.model.annotation import Annotation
+from pan_publisher.repository.database import engine
 
 app = celery.Celery("tasks", broker=CELERY_BROKER, backend=CELERY_BACKEND)
 
@@ -74,38 +72,35 @@ def batch_publish():
     batch["proof"]["jws"] = sig.signature.hex()
 
     # publish and pin batch claim on IPFS (TheGraph and Pinata)
-    # TODO: Pin on TheGraph
-    logger.debug("Adding and pinning annotation to IPFS")
+    logger.debug("Adding and pinning annotation on TheGraph")
+    response = requests.post(
+        THEGRAPH_IPFS_ENDPOINT,
+        files={"batch.json": json.dumps(batch).encode("utf-8")},
+    )
+    if response.status_code != 200:
+        logger.error(f"Publishing to TheGraph failed with response '{response.text}'")
+        return
+
+    try:
+        ipfs_hash = response.json()["Hash"]
+    except (json.JSONDecodeError, KeyError):
+        logger.error(f"TheGraph returned an invalid JSON response: '{response.text}'")
+        return
+
+    logger.debug("Pinning annotation to Pinata")
     response = requests.post(
         PINATA_ENDPOINT,
         headers={
             "pinata_api_key": PINATA_API_KEY,
             "pinata_secret_api_key": PINATA_SECRET_API_KEY,
         },
-        json={
-            "pinataMetadata": {
-                "name": f"batch-{batch_id}",
-                "pan": {
-                    "service": SERVICE_NAME,
-                    "pubkey": PUBLISHER_PUBKEY,
-                    "timestamp": datetime.now().isoformat(),
-                },
-            },
-            "pinataContent": batch,
-        },
+        json={"hashToPin": ipfs_hash},
     )
     if response.status_code != 200:
-        logger.error(f"Publishing to Pinata failed with response '{response.text}'")
+        logger.error(f"Pinning on Pinata failed with response '{response.text}'")
         return
 
-    try:
-        pinata_json = response.json()
-    except json.JSONDecodeError:
-        logger.error(f"Pinata returned an invalid JSON response: '{response.text}'")
-        return
-
-    batch_cid = pinata_json["IpfsHash"]
-    logger.debug(f"Published batch at content hash {batch_cid}")
+    logger.debug(f"Published batch at content hash {ipfs_hash}")
 
     for annotation in annotations:
         logger.debug(f"Marking annotation {annotation.id} as published")
@@ -115,7 +110,7 @@ def batch_publish():
     w3 = web3.Web3(web3.HTTPProvider(INFURA_URL))
     registry = w3.eth.contract(REGISTRY_CONTRACT, abi=REGISTRY_ABI)
     logger.debug("Build raw registry transaction")
-    tx = registry.functions.storeCID(batch_cid).buildTransaction(
+    tx = registry.functions.storeCID(ipfs_hash).buildTransaction(
         {
             "nonce": w3.eth.getTransactionCount(PUBLISHER_ACCOUNT.address),
             "chainId": 3,  # 1 = mainnet, 3 = ropsten
@@ -139,4 +134,4 @@ def batch_publish():
         logger.error(f"Encountered error during database commit: {e}")
         session.rollback()
 
-    return batch_cid  # so we can see the CID in the job dashboard results
+    return ipfs_hash  # so we can see the CID in the job dashboard results

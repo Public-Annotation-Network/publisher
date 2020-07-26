@@ -9,7 +9,6 @@ from eth_account.messages import encode_defunct
 from eth_utils import remove_0x_prefix
 from falcon.media.validators import jsonschema
 from falcon_cors import CORS
-from gql import AIOHTTPTransport, Client, gql
 from loguru import logger
 from sqlalchemy.orm import Session
 
@@ -17,10 +16,11 @@ from pan_publisher.api.background import batch_publish
 from pan_publisher.config import (
     PINATA_API_KEY,
     PINATA_SECRET_API_KEY,
-    PUBLISHER_PUBKEY,
-    SERVICE_NAME,
+    THEGRAPH_IPFS_ENDPOINT,
+    PINATA_ENDPOINT
 )
 from pan_publisher.model.annotation import Annotation
+from pan_publisher.repository.annotations import AnnotationsRepository
 
 # TODO: Move to config
 ANNOTATION_SCHEMA = {
@@ -67,83 +67,34 @@ ANNOTATION_SCHEMA = {
     ],
 }
 
-PINATA_ENDPOINT = "https://api.pinata.cloud/pinning/pinJSONToIPFS"
-PAN_SUBGRAPH = (
-    "https://api.thegraph.com/subgraphs/name/public-annotation-network/subgraph"
-)
-ANNOTATION_LIST_QUERY = gql(
-    """
-{
-  annotations(first: $first, skip: $skip) {
-    id
-    cid
-    batchCID
-  }
-}
-"""
-)
-
-ANNOTATION_FILTER_QUERY = gql(
-    """
-{
-  annotations( id: $id ) {
-    id
-    cid
-    batchCID
-  }
-}
-"""
-)
-
 
 class AnnotationResource:
     cors = CORS(allow_methods_list=["POST", "OPTIONS"])
     auth = {"exempt_methods": ["POST", "OPTIONS"]}
 
-    def __init__(self):
-        transport = AIOHTTPTransport(url=PAN_SUBGRAPH)
-        self.client = Client(transport=transport)
+    def __init__(self, annotation_repository: AnnotationsRepository):
+        self.annotation_repository = annotation_repository
 
     def on_get(self, req: falcon.Request, res: falcon.Response, annotation_id=None):
-        session = req.context["session"]
         published = req.get_param_as_bool("published", default=True)
+        content_filter = req.get_param("content", default=None)
         limit = req.context["pagination"]["limit"]
         offset = req.context["pagination"]["offset"]
-        output = []
 
-        if published:
-            # TODO: caching of existing annotations
-            if not annotation_id:
-                # list query
-                # TODO: handle transport errors
-                tg_resp = self.client.execute(
-                    ANNOTATION_LIST_QUERY,
-                    variable_values={"first": limit, "skip": offset},
-                )
-            else:
-                # filter query
-                # TODO: handle transport errors
-                tg_resp = self.client.execute(
-                    ANNOTATION_FILTER_QUERY, variable_values={"id": annotation_id}
-                )
-            logger.debug(tg_resp)
-            # TODO: handle http errors, check schema
-            for annotation in tg_resp.get("annotations", []):
-                # resolve through IPFS gateway
-                try:
-                    annotation_data = requests.get(
-                        f"https://gateway.ipfs.io/ipfs/{annotation['cid']}"
-                    ).json()
-                except json.JSONDecodeError:
-                    logger.warning(
-                        f"Failed to decode annotation CID: {annotation['cid']}"
-                    )
-                    continue
-                output.append(annotation_data)
+        if annotation_id:
+            logger.debug("Fetching data by annotation ID")
+            output = self.annotation_repository.get_by_id(
+                annotation_id=annotation_id, published=published
+            )
         else:
-            annotations = session.query(Annotation).offset(offset).limit(limit).all()
-            for annotation in annotations:
-                output.append(annotation.to_dict())
+            logger.debug("Fetching annotation list")
+            output = self.annotation_repository.list(
+                published=published,
+                filter_value=content_filter,
+                offset=offset,
+                limit=limit,
+            )
+
         res.body = json.dumps(output)
         if len(output) == 0:
             res.status = falcon.HTTP_NOT_FOUND
@@ -180,42 +131,40 @@ class AnnotationResource:
         session.add(annotation)
 
         # publish annotation on IPFS and add subject ID
-        # TODO: Pin on TheGraph
-        logger.debug("Adding and pinning annotation to IPFS")
+        logger.debug("Adding and pinning annotation on TheGraph")
+        response = requests.post(
+            THEGRAPH_IPFS_ENDPOINT,
+            files={"batch.json": json.dumps(req.media).encode("utf-8")},
+        )
+        if response.status_code != 200:
+            logger.error(f"Publishing to TheGraph failed with response '{response.text}'")
+            res.status = falcon.HTTP_FAILED_DEPENDENCY
+            return
+
+        try:
+            ipfs_hash = response.json()["Hash"]
+        except (json.JSONDecodeError, KeyError):
+            logger.error(f"TheGraph returned an invalid JSON response: '{response.text}'")
+            res.status = falcon.HTTP_FAILED_DEPENDENCY
+            return
+        annotation.subject_id = ipfs_hash
+
+        logger.debug("Pinning annotation to Pinata")
         response = requests.post(
             PINATA_ENDPOINT,
             headers={
                 "pinata_api_key": PINATA_API_KEY,
                 "pinata_secret_api_key": PINATA_SECRET_API_KEY,
             },
-            json={
-                "pinataMetadata": {
-                    "name": f"annotation-{annotation.issuer}",
-                    "pan": {
-                        "service": SERVICE_NAME,
-                        "pubkey": PUBLISHER_PUBKEY,
-                        "timestamp": datetime.now().isoformat(),
-                    },
-                },
-                "pinataContent": req.media,
-            },
+            json={"hashToPin": ipfs_hash},
         )
         if response.status_code != 200:
-            logger.error(f"Publishing to Pinata failed with response '{response.text}'")
+            logger.error(f"Pinning on Pinata failed with response '{response.text}'")
             res.status = falcon.HTTP_FAILED_DEPENDENCY
             return
 
-        try:
-            pinata_json = response.json()
-        except json.JSONDecodeError:
-            logger.error(f"Pinata returned an invalid JSON response: '{response.text}'")
-            res.status = falcon.HTTP_FAILED_DEPENDENCY
-            return
-
-        annotation.subject_id = pinata_json["IpfsHash"]
         session.add(annotation)
-
-        res.body = json.dumps(pinata_json)
+        res.body = json.dumps({"ipfsHash": ipfs_hash})
 
         # check whether we should publish a new batch
         logger.debug("Running batch check background job")

@@ -79,3 +79,6 @@ REGISTRY_ABI = [
         "type": "function",
     }
 ]
+PAN_SUBGRAPH = (
+    "https://api.thegraph.com/subgraphs/name/public-annotation-network/subgraph"
+)
