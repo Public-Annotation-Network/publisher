@@ -41,15 +41,15 @@ class PublisherAPI(falcon.API):
 
 
 init_session()
-public_cors = CORS(allow_all_origins=True)
+# public_cors = CORS(allow_all_origins=True)
 middleware = [
     RequireJSON(),
-    public_cors.middleware,
+    # public_cors.middleware,
     # TokenAuthMiddleware(db_session),
     DatabaseSessionManager(db_session),
     PaginationMiddleware(),
 ]
-application = PublisherAPI(middleware=middleware)
+application = PublisherAPI(middleware=middleware, cors_enable=True)
 
 
 if __name__ == "__main__":
