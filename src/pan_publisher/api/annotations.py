@@ -104,7 +104,7 @@ class AnnotationResource:
         logger.debug(f"Received annotation {req.media}")
         message = deepcopy(req.media)
         del message["proof"]["jws"]
-        encoded_message = json.dumps(message, sort_keys=True, separators=(",", ":"))
+        encoded_message = json.dumps(message, separators=(",", ":"))
         signed_message = encode_defunct(text=encoded_message)
 
         raw_signature = remove_0x_prefix(req.media["proof"]["jws"])
