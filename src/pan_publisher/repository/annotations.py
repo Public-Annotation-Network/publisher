@@ -72,7 +72,7 @@ class AnnotationsRepository:
             # resolve through IPFS gateway
             try:
                 annotation_data = requests.get(
-                    f"https://gateway.pinata.cloud/ipfs/{annotation['cid']}", timeout=1.5
+                    f"https://api.thegraph.com/ipfs/api/v0/cat?arg={annotation['cid']}", timeout=1.5
                 ).json()
             except (json.JSONDecodeError, ReadTimeout, ConnectionError):
                 logger.warning(f"Failed to decode annotation CID: {annotation['cid']}")
