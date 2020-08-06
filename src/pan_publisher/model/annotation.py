@@ -19,7 +19,7 @@ class Annotation(Base):
     issuance_date = Column(DateTime(), nullable=False)
 
     # annotation data
-    subject_id = Column(String(50), nullable=False)
+    subject_id = Column(String(50), nullable=False, unique=True)
     original_content = Column(Text(), nullable=False)
     annotation_content = Column(Text(), nullable=True)
     batch_id = Column(UUID(as_uuid=True), default=None, nullable=True)

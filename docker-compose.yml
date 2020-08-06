@@ -31,7 +31,7 @@ services:
   celery:
     image: web
     restart: always
-    command: celery -A pan_publisher.api.background worker --loglevel=info
+    command: celery -A pan_publisher.api.background --concurrency=1 worker --loglevel=info
     env_file: .env
     depends_on:
       - web
@@ -57,6 +57,7 @@ services:
       - web
       - redis
       - celery
+      - celery-beat
 
 volumes:
   db-data:

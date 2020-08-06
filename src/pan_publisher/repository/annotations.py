@@ -63,20 +63,7 @@ class AnnotationsRepository:
             return []
         return self._resolve_subgraph_response(tg_resp)
 
-    def get_by_cid(self, annotation_id, published):
-        # if published:
-        #     # TODO: handle transport errors
-        #     tg_resp = self.client.execute(
-        #         ANNOTATION_FILTER_QUERY, variable_values={"id": annotation_id}
-        #     )
-        #     output = self._resolve_subgraph_response(tg_resp)
-        # else:
-        #     annotations = (
-        #         self.session.query(Annotation)
-        #         .filter(Annotation.id == annotation_id)
-        #         .all()
-        #     )
-        #     output = [a.to_dict() for a in annotations]
+    def get_by_cid(self, annotation_id):
         annotations = (
             self.session.query(Annotation)
             .filter(Annotation.subject_id == annotation_id)
@@ -105,53 +92,8 @@ class AnnotationsRepository:
         )
         return output
 
-    def list(self, published, filter_value, offset, limit):
+    def list(self, filter_value, offset, limit):
         output = []
-        # if published and filter_value is None:
-        #     logger.debug(
-        #         f"Fetching published annotations from subgraph with limit={limit} offset={offset}"
-        #     )
-        #     # TODO: handle transport errors
-        #     tg_resp = self.client.execute(
-        #         ANNOTATION_LIST_QUERY, variable_values={"first": limit, "skip": offset},
-        #     )
-        #     output = self._resolve_subgraph_response(tg_resp)
-        # elif published and filter_value is not None:
-        #     logger.debug(
-        #         f'Fetching published filtered by "{filter_value}" '
-        #         f"annotations from subgraph with limit={limit} offset={offset}"
-        #     )
-        #     tg_resp = self.client.execute(
-        #         ANNOTATION_CONTENT_FILTER_QUERY,
-        #         variable_values={
-        #             "first": limit,
-        #             "skip": offset,
-        #             "reference": filter_value,
-        #         },
-        #     )
-        #     output = self._resolve_subgraph_response(tg_resp)
-        # elif not published and filter_value is None:
-        #     logger.debug(
-        #         f"Fetching unpublished annotations from DB with limit={limit} offset={offset}"
-        #     )
-        #     annotations = (
-        #         self.session.query(Annotation).offset(offset).limit(limit).all()
-        #     )
-        #     output = [a.to_dict() for a in annotations]
-        # elif not published and filter_value is not None:
-        #     logger.debug(
-        #         f'Fetching unpublished annotations filtered by "{filter_value}" '
-        #         f"from DB with limit={limit} offset={offset}"
-        #     )
-        #     annotations = (
-        #         self.session.query(Annotation)
-        #         .filter(Annotation.original_content.like(filter_value))
-        #         .offset(offset)
-        #         .limit(limit)
-        #         .all()
-        #     )
-        #     output = [a.to_dict() for a in annotations]
-
         if filter_value is None:
             logger.debug(
                 f"Fetching unpublished annotations from DB with filter={filter_value} limit={limit} offset={offset}"
@@ -171,8 +113,8 @@ class AnnotationsRepository:
             )
             annotations = (
                 self.session.query(Annotation)
-                .filter(Annotation.original_content.like(filter_value))
                 .order_by(desc(Annotation.issuance_date))
+                .filter(Annotation.original_content.like(f"%{filter_value}%"))
                 .offset(offset)
                 .limit(limit)
                 .all()

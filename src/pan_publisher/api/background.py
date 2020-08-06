@@ -1,6 +1,6 @@
 import json
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from uuid import uuid4
 
 import celery
@@ -153,12 +153,19 @@ query MyQuery ($first: Int = 10, $skip: Int = 0) {
 """
 )
 
+from aiohttp.client_exceptions import ClientConnectionError
+
 
 def fetch_registry_annotations(client, offset, limit):
     start_time = time.time()
-    annotations = client.execute(
-        ANNOTATION_LIST_QUERY, variable_values={"first": limit, "skip": offset}
-    ).get("annotations", [])
+    try:
+        annotations = client.execute(
+            ANNOTATION_LIST_QUERY, variable_values={"first": limit, "skip": offset}
+        ).get("annotations", [])
+    except ClientConnectionError:
+        logger.warning("The IPFS gateway server dropped the connection - skipping")
+        return []
+
     logger.info(
         f"Fetched {len(annotations)} annotations in {time.time() - start_time} seconds"
     )
@@ -179,6 +186,7 @@ def sync_registry():
     )
 
     while annotations:
+        # TODO: This takes long - parallelize
         for annotation in annotations:
             # skip if annotation already in DB
             try:
@@ -215,13 +223,13 @@ def sync_registry():
                 subject_id=annotation["cid"],
                 published=True,
             )
-            session.add(annotation_obj)
 
-        try:
-            session.commit()
-        except SQLAlchemyError as e:
-            logger.error(f"Encountered error during database commit: {e}")
-            session.rollback()
+            try:
+                session.add(annotation_obj)
+                session.commit()
+            except SQLAlchemyError as e:
+                logger.error(f"Encountered error during database commit: {e}")
+                session.rollback()
 
         offset += limit
         annotations = fetch_registry_annotations(
@@ -232,7 +240,7 @@ def sync_registry():
 app.conf.beat_schedule = {
     "sync-registry": {
         "task": "pan_publisher.api.background.sync_registry",
-        "schedule": 60.0,
+        "schedule": 300,
         "options": {"expires": 10.0},
     }
 }
