@@ -11,4 +11,5 @@ COPY . /usr/src/app/
 RUN pip3 install .
 
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+RUN chown -R appuser:appgroup /usr/src/app
 USER appuser

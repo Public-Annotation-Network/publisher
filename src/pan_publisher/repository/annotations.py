@@ -1,13 +1,16 @@
 import json
+import time
 
 import requests
+from aiohttp.client_exceptions import ClientConnectionError
 from gql import AIOHTTPTransport, Client, gql
 from loguru import logger
+from requests.exceptions import ConnectionError, ReadTimeout
+from sqlalchemy import desc
 from sqlalchemy.orm import Session
-from requests.exceptions import ReadTimeout, ConnectionError
+
 from pan_publisher.config import PAN_SUBGRAPH
 from pan_publisher.model.annotation import Annotation
-
 
 ANNOTATION_LIST_QUERY = gql(
     """
@@ -50,70 +53,118 @@ class AnnotationsRepository:
         self.session = session
         self.client = Client(transport=AIOHTTPTransport(url=PAN_SUBGRAPH))
 
-    def get_by_id(self, annotation_id, published):
-        if published:
-            # TODO: handle transport errors
+    def get_subgraph_annotation(self, annotation_id):
+        try:
             tg_resp = self.client.execute(
                 ANNOTATION_FILTER_QUERY, variable_values={"id": annotation_id}
             )
-            output = self._resolve_subgraph_response(tg_resp)
-        else:
-            annotations = (
-                self.session.query(Annotation)
-                .filter(Annotation.id == annotation_id)
-                .all()
-            )
-            output = [a.to_dict() for a in annotations]
+        except ClientConnectionError:
+            logger.warning("The IPFS gateway server dropped the connection - skipping")
+            return []
+        return self._resolve_subgraph_response(tg_resp)
+
+    def get_by_cid(self, annotation_id, published):
+        # if published:
+        #     # TODO: handle transport errors
+        #     tg_resp = self.client.execute(
+        #         ANNOTATION_FILTER_QUERY, variable_values={"id": annotation_id}
+        #     )
+        #     output = self._resolve_subgraph_response(tg_resp)
+        # else:
+        #     annotations = (
+        #         self.session.query(Annotation)
+        #         .filter(Annotation.id == annotation_id)
+        #         .all()
+        #     )
+        #     output = [a.to_dict() for a in annotations]
+        annotations = (
+            self.session.query(Annotation)
+            .filter(Annotation.subject_id == annotation_id)
+            .all()
+        )
+        output = [a.to_dict() for a in annotations]
         return output
 
-    def _resolve_subgraph_response(self, response):
+    @staticmethod
+    def _resolve_subgraph_response(response):
+        start_time = time.time()
         output = []
         for annotation in response.get("annotations", []):
             # resolve through IPFS gateway
             try:
                 annotation_data = requests.get(
-                    f"https://api.thegraph.com/ipfs/api/v0/cat?arg={annotation['cid']}", timeout=1.5
+                    f"https://api.thegraph.com/ipfs/api/v0/cat?arg={annotation['cid']}",
+                    timeout=1.5,
                 ).json()
             except (json.JSONDecodeError, ReadTimeout, ConnectionError):
                 logger.warning(f"Failed to decode annotation CID: {annotation['cid']}")
                 continue
             output.append(annotation_data)
+        logger.info(
+            f"Gateway content retrieval took {time.time() - start_time} seconds"
+        )
         return output
 
     def list(self, published, filter_value, offset, limit):
         output = []
-        if published and filter_value is None:
+        # if published and filter_value is None:
+        #     logger.debug(
+        #         f"Fetching published annotations from subgraph with limit={limit} offset={offset}"
+        #     )
+        #     # TODO: handle transport errors
+        #     tg_resp = self.client.execute(
+        #         ANNOTATION_LIST_QUERY, variable_values={"first": limit, "skip": offset},
+        #     )
+        #     output = self._resolve_subgraph_response(tg_resp)
+        # elif published and filter_value is not None:
+        #     logger.debug(
+        #         f'Fetching published filtered by "{filter_value}" '
+        #         f"annotations from subgraph with limit={limit} offset={offset}"
+        #     )
+        #     tg_resp = self.client.execute(
+        #         ANNOTATION_CONTENT_FILTER_QUERY,
+        #         variable_values={
+        #             "first": limit,
+        #             "skip": offset,
+        #             "reference": filter_value,
+        #         },
+        #     )
+        #     output = self._resolve_subgraph_response(tg_resp)
+        # elif not published and filter_value is None:
+        #     logger.debug(
+        #         f"Fetching unpublished annotations from DB with limit={limit} offset={offset}"
+        #     )
+        #     annotations = (
+        #         self.session.query(Annotation).offset(offset).limit(limit).all()
+        #     )
+        #     output = [a.to_dict() for a in annotations]
+        # elif not published and filter_value is not None:
+        #     logger.debug(
+        #         f'Fetching unpublished annotations filtered by "{filter_value}" '
+        #         f"from DB with limit={limit} offset={offset}"
+        #     )
+        #     annotations = (
+        #         self.session.query(Annotation)
+        #         .filter(Annotation.original_content.like(filter_value))
+        #         .offset(offset)
+        #         .limit(limit)
+        #         .all()
+        #     )
+        #     output = [a.to_dict() for a in annotations]
+
+        if filter_value is None:
             logger.debug(
-                f"Fetching published annotations from subgraph with limit={limit} offset={offset}"
-            )
-            # TODO: handle transport errors
-            tg_resp = self.client.execute(
-                ANNOTATION_LIST_QUERY, variable_values={"first": limit, "skip": offset},
-            )
-            output = self._resolve_subgraph_response(tg_resp)
-        elif published and filter_value is not None:
-            logger.debug(
-                f'Fetching published filtered by "{filter_value}" '
-                f"annotations from subgraph with limit={limit} offset={offset}"
-            )
-            tg_resp = self.client.execute(
-                ANNOTATION_CONTENT_FILTER_QUERY,
-                variable_values={
-                    "first": limit,
-                    "skip": offset,
-                    "reference": filter_value,
-                },
-            )
-            output = self._resolve_subgraph_response(tg_resp)
-        elif not published and filter_value is None:
-            logger.debug(
-                f"Fetching unpublished annotations from DB with limit={limit} offset={offset}"
+                f"Fetching unpublished annotations from DB with filter={filter_value} limit={limit} offset={offset}"
             )
             annotations = (
-                self.session.query(Annotation).offset(offset).limit(limit).all()
+                self.session.query(Annotation)
+                .order_by(desc(Annotation.issuance_date))
+                .offset(offset)
+                .limit(limit)
+                .all()
             )
             output = [a.to_dict() for a in annotations]
-        elif not published and filter_value is not None:
+        elif filter_value is not None:
             logger.debug(
                 f'Fetching unpublished annotations filtered by "{filter_value}" '
                 f"from DB with limit={limit} offset={offset}"
@@ -121,6 +172,7 @@ class AnnotationsRepository:
             annotations = (
                 self.session.query(Annotation)
                 .filter(Annotation.original_content.like(filter_value))
+                .order_by(desc(Annotation.issuance_date))
                 .offset(offset)
                 .limit(limit)
                 .all()

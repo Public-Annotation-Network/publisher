@@ -1,5 +1,4 @@
 falcon==3.0.0a1
-falcon_cors
 gunicorn
 psycopg2-binary>=2.8
 SQLAlchemy

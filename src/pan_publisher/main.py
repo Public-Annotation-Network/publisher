@@ -1,18 +1,15 @@
 import falcon
-from falcon_cors import CORS
 from loguru import logger
 
 from pan_publisher.api import AnnotationResource
+from pan_publisher.api.background import sync_registry
 from pan_publisher.middleware import DatabaseSessionManager, RequireJSON
 from pan_publisher.repository.annotations import AnnotationsRepository
 from pan_publisher.repository.database import db_session, init_session
 from pan_publisher.utils.pagination import PaginationMiddleware
 
-import logging
-logging.basicConfig(level=logging.DEBUG)
 
-
-class PublisherAPI(falcon.API):
+class PublisherAPI(falcon.App):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         logger.info("API Server is starting")
@@ -50,6 +47,7 @@ middleware = [
     PaginationMiddleware(),
 ]
 application = PublisherAPI(middleware=middleware, cors_enable=True)
+sync_registry.delay()
 
 
 if __name__ == "__main__":

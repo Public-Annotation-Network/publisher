@@ -33,7 +33,7 @@ DB_ECHO = True if os.environ.get("DB_ECHO") == "true" else False
 DB_AUTOCOMMIT = True
 
 DATABASE_URL = "postgresql+psycopg2://{user}:{password}@{host}/{database}".format(
-    user=DB_USER, password=DB_PASSWORD, host=DB_HOST, database=DB_NAME,
+    user=DB_USER, password=DB_PASSWORD, host=DB_HOST, database=DB_NAME
 )
 
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "info")
@@ -60,9 +60,17 @@ if INFURA_URL is None:
 
 CELERY_BROKER = os.environ.get("CELERY_BROKER")
 CELERY_BACKEND = os.environ.get("CELERY_BACKEND")
+BEAT_BROKER = os.environ.get("BEAT_BROKER")
+BEAT_BACKEND = os.environ.get("BEAT_BACKEND")
 
-if CELERY_BACKEND is None or CELERY_BROKER is None:
+if (
+    CELERY_BACKEND is None
+    or CELERY_BROKER is None
+    or BEAT_BACKEND is None
+    or BEAT_BROKER is None
+):
     raise ConfigurationError("Missing celery config parameters")
+
 
 THEGRAPH_IPFS_ENDPOINT = os.environ.get("THEGRAPH_IPFS_ENDPOINT")
 if THEGRAPH_IPFS_ENDPOINT is None:

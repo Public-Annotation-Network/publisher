@@ -37,6 +37,15 @@ services:
       - web
       - redis
 
+  celery-beat:
+    image: web
+    restart: always
+    command: celery -A pan_publisher.api.background beat --loglevel=info
+    env_file: .env
+    depends_on:
+      - web
+      - redis
+
   monitor:
     image: web
     restart: always

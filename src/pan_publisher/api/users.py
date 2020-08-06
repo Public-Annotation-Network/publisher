@@ -2,7 +2,6 @@ import json
 
 import falcon
 from cerberus import Validator
-from falcon_cors import CORS
 from loguru import logger
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -31,9 +30,6 @@ def validate_user_create(req, res, resource, params):
 
 
 class UserResource:
-    cors = CORS(allow_methods_list=["POST", "GET", "PUT", "OPTIONS"])
-    auth = {"exempt_methods": ["POST", "OPTIONS"]}
-
     def __init__(self, auth_manager):
         self.auth_manager = auth_manager
 
@@ -75,9 +71,6 @@ class UserResource:
 
 
 class LoginResource:
-    cors = CORS(allow_methods_list=["POST", "OPTIONS"])
-    auth = {"exempt_methods": ["POST", "OPTIONS"]}
-
     def __init__(self, auth_manager: AuthManager):
         self.auth_manager = auth_manager
 
@@ -94,9 +87,6 @@ class LoginResource:
 
 
 class LogoutResource:
-    cors = CORS(allow_methods_list=["POST", "OPTIONS"])
-    auth = {"exempt_methods": ["OPTIONS"]}
-
     def __init__(self, auth_manager: AuthManager):
         self.auth_manager = auth_manager
 

@@ -1,6 +1,5 @@
 import json
 from copy import deepcopy
-from datetime import datetime
 
 import falcon
 import requests
@@ -8,16 +7,15 @@ from eth_account import Account
 from eth_account.messages import encode_defunct
 from eth_utils import remove_0x_prefix
 from falcon.media.validators import jsonschema
-from falcon_cors import CORS
 from loguru import logger
 from sqlalchemy.orm import Session
 
 from pan_publisher.api.background import batch_publish
 from pan_publisher.config import (
     PINATA_API_KEY,
+    PINATA_ENDPOINT,
     PINATA_SECRET_API_KEY,
     THEGRAPH_IPFS_ENDPOINT,
-    PINATA_ENDPOINT
 )
 from pan_publisher.model.annotation import Annotation
 from pan_publisher.repository.annotations import AnnotationsRepository
@@ -69,9 +67,6 @@ ANNOTATION_SCHEMA = {
 
 
 class AnnotationResource:
-    cors = CORS(allow_methods_list=["POST", "OPTIONS"])
-    auth = {"exempt_methods": ["POST", "OPTIONS"]}
-
     def __init__(self, annotation_repository: AnnotationsRepository):
         self.annotation_repository = annotation_repository
 
@@ -83,7 +78,7 @@ class AnnotationResource:
 
         if annotation_id:
             logger.debug("Fetching data by annotation ID")
-            output = self.annotation_repository.get_by_id(
+            output = self.annotation_repository.get_by_cid(
                 annotation_id=annotation_id, published=published
             )
         else:
@@ -137,14 +132,18 @@ class AnnotationResource:
             files={"batch.json": json.dumps(req.media).encode("utf-8")},
         )
         if response.status_code != 200:
-            logger.error(f"Publishing to TheGraph failed with response '{response.text}'")
+            logger.error(
+                f"Publishing to TheGraph failed with response '{response.text}'"
+            )
             res.status = falcon.HTTP_FAILED_DEPENDENCY
             return
 
         try:
             ipfs_hash = response.json()["Hash"]
         except (json.JSONDecodeError, KeyError):
-            logger.error(f"TheGraph returned an invalid JSON response: '{response.text}'")
+            logger.error(
+                f"TheGraph returned an invalid JSON response: '{response.text}'"
+            )
             res.status = falcon.HTTP_FAILED_DEPENDENCY
             return
         annotation.subject_id = ipfs_hash

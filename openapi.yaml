@@ -23,6 +23,10 @@ paths:
         description: "ID of the annotation to return"
         default: true
         type: "boolean"
+      - name: "content"
+        in: "query"
+        description: "A string to filter annotation content by"
+        type: "string"
       - name: "offset"
         in: "query"
         description: "The number of entries to skip"
