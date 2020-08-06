@@ -8,6 +8,7 @@ from eth_account.messages import encode_defunct
 from eth_utils import remove_0x_prefix
 from falcon.media.validators import jsonschema
 from loguru import logger
+from requests.exceptions import ConnectionError, ReadTimeout
 from sqlalchemy.orm import Session
 
 from pan_publisher.api.background import batch_publish
@@ -121,10 +122,17 @@ class AnnotationResource:
 
         # publish annotation on IPFS and add subject ID
         logger.debug("Adding and pinning annotation on TheGraph")
-        response = requests.post(
-            THEGRAPH_IPFS_ENDPOINT,
-            files={"batch.json": json.dumps(req.media).encode("utf-8")},
-        )
+        try:
+            response = requests.post(
+                THEGRAPH_IPFS_ENDPOINT,
+                files={"batch.json": json.dumps(req.media).encode("utf-8")},
+                timeout=5,
+            )
+        except (ConnectionError, ReadTimeout) as e:
+            logger.error(f"Connection to TheGraph timed out: {e}")
+            res.status = falcon.HTTP_FAILED_DEPENDENCY
+            return
+
         if response.status_code != 200:
             logger.error(
                 f"Publishing to TheGraph failed with response '{response.text}'"
@@ -143,18 +151,21 @@ class AnnotationResource:
         annotation.subject_id = ipfs_hash
 
         logger.debug("Pinning annotation to Pinata")
-        response = requests.post(
-            PINATA_ENDPOINT,
-            headers={
-                "pinata_api_key": PINATA_API_KEY,
-                "pinata_secret_api_key": PINATA_SECRET_API_KEY,
-            },
-            json={"hashToPin": ipfs_hash},
-        )
+        try:
+            response = requests.post(
+                PINATA_ENDPOINT,
+                headers={
+                    "pinata_api_key": PINATA_API_KEY,
+                    "pinata_secret_api_key": PINATA_SECRET_API_KEY,
+                },
+                json={"hashToPin": ipfs_hash},
+                timeout=5,
+            )
+        except (ConnectionError, ReadTimeout) as e:
+            # continue from here because Pinata is not a required dependency
+            logger.error(f"Connection to Pinata timed out: {e}")
         if response.status_code != 200:
             logger.error(f"Pinning on Pinata failed with response '{response.text}'")
-            res.status = falcon.HTTP_FAILED_DEPENDENCY
-            return
 
         session.add(annotation)
         res.body = json.dumps({"ipfsHash": ipfs_hash})
