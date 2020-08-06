@@ -96,7 +96,7 @@ class AnnotationsRepository:
         output = []
         if filter_value is None:
             logger.debug(
-                f"Fetching unpublished annotations from DB with filter={filter_value} limit={limit} offset={offset}"
+                f"Fetching annotations from DB with filter={filter_value} limit={limit} offset={offset}"
             )
             annotations = (
                 self.session.query(Annotation)
@@ -108,7 +108,7 @@ class AnnotationsRepository:
             output = [a.to_dict() for a in annotations]
         elif filter_value is not None:
             logger.debug(
-                f'Fetching unpublished annotations filtered by "{filter_value}" '
+                f'Fetching annotations filtered by "{filter_value}" '
                 f"from DB with limit={limit} offset={offset}"
             )
             annotations = (

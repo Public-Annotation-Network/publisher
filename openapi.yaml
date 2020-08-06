@@ -18,11 +18,11 @@ paths:
       produces:
       - "application/json"
       parameters:
-      - name: "published"
-        in: "query"
-        description: "ID of the annotation to return"
-        default: true
-        type: "boolean"
+#      - name: "published"
+#        in: "query"
+#        description: "ID of the annotation to return"
+#        default: true
+#        type: "boolean"
       - name: "content"
         in: "query"
         description: "A string to filter annotation content by"

@@ -71,23 +71,17 @@ class AnnotationResource:
         self.annotation_repository = annotation_repository
 
     def on_get(self, req: falcon.Request, res: falcon.Response, annotation_id=None):
-        published = req.get_param_as_bool("published", default=True)
         content_filter = req.get_param("content", default=None)
         limit = req.context["pagination"]["limit"]
         offset = req.context["pagination"]["offset"]
 
         if annotation_id:
             logger.debug("Fetching data by annotation ID")
-            output = self.annotation_repository.get_by_cid(
-                annotation_id=annotation_id, published=published
-            )
+            output = self.annotation_repository.get_by_cid(annotation_id=annotation_id)
         else:
             logger.debug("Fetching annotation list")
             output = self.annotation_repository.list(
-                published=published,
-                filter_value=content_filter,
-                offset=offset,
-                limit=limit,
+                filter_value=content_filter, offset=offset, limit=limit,
             )
 
         res.body = json.dumps(output)

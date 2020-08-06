@@ -7,6 +7,7 @@ import celery
 import dateutil.parser
 import requests
 import web3
+from aiohttp.client_exceptions import ClientConnectionError
 from eth_account.account import SignedMessage
 from eth_account.messages import encode_defunct
 from gql import AIOHTTPTransport, Client, gql
@@ -152,8 +153,6 @@ query MyQuery ($first: Int = 10, $skip: Int = 0) {
 }
 """
 )
-
-from aiohttp.client_exceptions import ClientConnectionError
 
 
 def fetch_registry_annotations(client, offset, limit):
